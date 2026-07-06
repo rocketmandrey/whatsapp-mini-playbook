@@ -1,0 +1,19 @@
+# /etc/nginx/sites-available/wa-mcp — боевой конфиг, обезличено.
+# У WhatsApp MCP секрет В ПУТИ (его проверяет сам http-server.mjs),
+# поэтому nginx тут проще, чем у tg-mcp: никаких инъекций заголовков.
+# SSL добавит certbot: certbot --nginx -d wa-mcp.example.com
+server {
+    server_name wa-mcp.example.com;
+    listen 80;  # certbot перепишет на 443 + redirect
+
+    location / {
+        proxy_pass http://127.0.0.1:8796;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 3600s;
+        chunked_transfer_encoding on;
+    }
+}

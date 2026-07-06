@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+wa_session/
+.wwebjs_auth/
+.wwebjs_cache/
+*.db
+*.db-shm
+*.db-wal
+node_modules/
+*.log
+.DS_Store

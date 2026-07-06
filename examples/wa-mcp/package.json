@@ -1,0 +1,19 @@
+{
+  "name": "wa-bridge",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "WhatsApp Web bridge (records all chats + send) + read-only MCP server over the archive",
+  "bin": { "whatsapp-mcp": "mcp-server.mjs" },
+  "scripts": {
+    "bridge": "node bridge.js",
+    "mcp": "node mcp-server.mjs",
+    "mcp-http": "node http-server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "better-sqlite3": "^11.8.1",
+    "whatsapp-web.js": "^1.26.1",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

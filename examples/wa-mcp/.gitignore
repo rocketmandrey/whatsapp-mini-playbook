@@ -1,0 +1,23 @@
+# secrets
+.env
+.env.*
+!.env.example
+.mcp_secret
+*.token
+
+# whatsapp session / browser cache
+wa_session/
+.wwebjs_auth/
+.wwebjs_cache/
+
+# databases
+*.db
+*.db-shm
+*.db-wal
+
+# node
+node_modules/
+npm-debug.log*
+
+# os
+.DS_Store

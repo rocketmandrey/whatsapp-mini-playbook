@@ -1,0 +1,15 @@
+# /etc/systemd/system/whatsapp-mcp-http.service — боевой юнит, обезличено.
+# .env рядом: WA_MCP_PORT=8796, WA_MCP_SECRET=<openssl rand -hex 24>, BRIDGE_TOKEN=...
+[Unit]
+Description=WhatsApp MCP HTTP server (remote, secret-in-path)
+After=network.target
+
+[Service]
+WorkingDirectory=/root/whatsapp-mcp
+EnvironmentFile=/root/whatsapp-mcp/.env
+ExecStart=/usr/bin/node /root/whatsapp-mcp/http-server.mjs
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

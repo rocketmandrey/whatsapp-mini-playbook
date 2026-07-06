@@ -8,6 +8,44 @@
 > Готовый комплект: [`examples/wa-mcp/`](examples/wa-mcp/) — мост + HTTP MCP +
 > systemd + nginx, наши боевые конфиги, обезличено.
 
+## 0. С абсолютного нуля: VPS + домен + SSH (≈30 минут)
+
+Если сервера и домена ещё нет — агент проходит этот раздел С ТОБОЙ, до всего остального.
+
+**VPS — где купить.** Любой хостер с оплатой российской картой:
+[Timeweb Cloud](https://timeweb.cloud) · [Beget](https://beget.com/ru/vps) ·
+[reg.ru](https://www.reg.ru/vps/) · [aeza](https://aeza.net). (Hetzner/DigitalOcean
+из РФ не оплатить — не трать время.) Что выбрать при заказе:
+
+- тариф **2 ГБ RAM** (Chromium вместе с системой в 1 ГБ не влезает), 1–2 vCPU,
+  15+ ГБ диска — это **~300–700 ₽/мес**;
+- ОС **Ubuntu 24.04** (или 22.04);
+- если панель предлагает «добавить SSH-ключ» — добавь сразу (ключ см. ниже);
+  иначе root-пароль придёт на почту.
+
+**SSH-доступ для агента.** На ноуте один раз:
+
+```bash
+ssh-keygen -t ed25519            # Enter на все вопросы (если ключа ещё нет)
+ssh-copy-id root@<IP-сервера>    # спросит root-пароль из письма хостера
+ssh root@<IP-сервера>            # должен пустить БЕЗ пароля
+```
+
+После этого агент делает всё на сервере сам (`ssh root@<IP> "команда"`) — тебе
+руками туда ходить не нужно.
+
+**Домен.** Нужен для доступа с телефона (claude.ai требует валидный HTTPS):
+
+- купи любой дешёвый домен у того же регистратора (**~200–400 ₽/год** за `.ru`);
+- в панели DNS создай **A-запись**: имя `wa-mcp`, значение — IP сервера;
+- DNS расходится не мгновенно: проверь `dig +short wa-mcp.твойдомен` → должен
+  вернуть IP сервера; **до этого certbot упадёт** — просто подожди;
+- потестить без покупки домена: `<IP>.sslip.io` (например `1.2.3.4.sslip.io`)
+  резолвится сам, certbot с ним работает.
+
+> Путь ниже расписан для VPS/Ubuntu. Mac mini 24/7 тоже вариант, но systemd/nginx
+> шаги придётся адаптировать самому — в мини-версии этого нет.
+
 ## 1. Архитектура
 
 ```
@@ -39,7 +77,7 @@
 | | **Наш путь: whatsapp-web.js** | Альтернатива: whatsmeow (Go) |
 |---|---|---|
 | Архив | копится **с момента линковки** | обещает подтянуть прошлое (HistorySync) |
-| RAM | ≥1 ГБ (Chromium) | лёгкий, без браузера |
+| RAM | тариф 2 ГБ (Chromium) | лёгкий, без браузера |
 | Надёжность | в проде, недели аптайма | капризная линковка; **у нас history вернул 0** |
 
 **Прошлые переписки** (до линковки) при нужде добираются официальным
@@ -52,30 +90,42 @@
 ## 3. Деплой по шагам
 
 ```bash
-# 0. Комплект на сервер
+# 0. Комплект на сервер (с ноута; дальше команды — НА сервере через ssh)
 scp -r examples/wa-mcp root@<сервер>:/root/whatsapp-mcp
+ssh root@<сервер>
 cd /root/whatsapp-mcp
 
-# 1. Секреты (генерятся, внешних ключей нет)
+# 1. Пакеты (свежий Ubuntu ничего этого не имеет)
+apt update && apt install -y nodejs npm nginx certbot python3-certbot-nginx
+# библиотеки для Chromium (headless Ubuntu без них роняет мост):
+apt install -y libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+  libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 \
+  libasound2 libpango-1.0-0 libcairo2
+
+# 2. Секреты (генерятся, внешних ключей нет)
 cp .env.example .env && chmod 600 .env
 # впиши: BRIDGE_TOKEN=$(openssl rand -hex 24), WA_MCP_SECRET=$(openssl rand -hex 24)
 
-# 2. Мост
-npm install                     # whatsapp-web.js тянет Chromium (нужен ≥1 ГБ RAM)
+# 3. Мост
+npm install                     # whatsapp-web.js тянет Chromium (нужен тариф 2 ГБ RAM)
 node bridge.js                  # QR в терминале и на http://<сервер>:8795
 # Телефон: WhatsApp → Настройки → Связанные устройства → Привязать устройство → сканируй
 # Проверка: curl 127.0.0.1:8799/me  → твой номер
-# ⚠️ сразу после линковки: ufw deny 8795
+# ⚠️ сразу после линковки закрой QR-порт. Если ufw ещё не включён:
+ufw allow OpenSSH && ufw enable   # НЕ включай ufw без allow OpenSSH — отрежешь себе SSH
+ufw deny 8795 && ufw status
 
-# 3. MCP поверх архива
+# 4. MCP поверх архива
 node http-server.mjs            # 127.0.0.1:8796, путь /<WA_MCP_SECRET>/mcp
 
-# 4. 24/7 — systemd (шаблоны в deploy/): мост + MCP, оба Restart=always
+# 5. 24/7 — systemd (шаблоны в deploy/): мост + MCP, оба Restart=always
 cp deploy/whatsapp-mcp-http.service /etc/systemd/system/
 systemctl daemon-reload && systemctl enable --now whatsapp-mcp-http
 # для моста — аналогичный юнит на bridge.js (образец тот же, поменяй ExecStart)
 
-# 5. Домен: deploy/nginx.wa-mcp.conf.example → sites-available, затем
+# 6. Домен (A-запись уже смотрит на сервер, §0): nginx-конфиг + SSL
+cp deploy/nginx.wa-mcp.conf.example /etc/nginx/sites-available/wa-mcp   # впиши свой домен
+ln -s /etc/nginx/sites-available/wa-mcp /etc/nginx/sites-enabled/ && nginx -t && systemctl reload nginx
 certbot --nginx -d wa-mcp.example.com
 ```
 
@@ -94,7 +144,8 @@ claude mcp list     # → whatsapp ✔ Connected
 **Телефон / claude.ai:** кастомные коннекторы claude.ai не умеют свои HTTP-заголовки,
 но нам и не надо — секрет уже в URL. Settings → Connectors → Add custom connector →
 тот же `https://wa-mcp.example.com/<WA_MCP_SECRET>/mcp`. OAuth-поля в Advanced
-settings не заполняй.
+settings не заполняй. (Кастомные коннекторы есть на платных планах claude.ai —
+на бесплатном пункта может не быть.)
 
 > На второй машине — та же команда. Сессия одна (на сервере), клиентов сколько угодно.
 
@@ -118,6 +169,8 @@ settings не заполняй.
 | QR «попробуйте ещё раз» по кругу | частые попытки линковки → shadow-ban | пауза (часы), не долби |
 | Мост ест память / «засыпает» | Chromium long-running | systemd с `Restart=always`, ≥1 ГБ RAM |
 | `send_message` ничего не шлёт | мост не поднят / неверный `BRIDGE_TOKEN` / не тот `WA_BRIDGE_URL` | `curl 127.0.0.1:8799/me`, сверь `.env` |
+| Мост падает: `error while loading shared libraries` | headless Ubuntu без библиотек Chromium | `apt install`-список из §3 шага 1 |
+| `certbot` падает | A-запись ещё не разошлась | `dig +short wa-mcp.домен` → ждём IP, потом certbot (§0) |
 | Архив пустой | это норма: копится с момента линковки | прошлое — Export chat (§2) |
 | Телефон не коннектится | невалидный SSL / порт не проксируется | `nginx -t`, certbot, порт на `127.0.0.1` + nginx наружу |
 

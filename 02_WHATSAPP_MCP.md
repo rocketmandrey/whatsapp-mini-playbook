@@ -152,9 +152,15 @@ claude mcp add --scope user --transport http whatsapp \
 claude mcp list     # → whatsapp ✔ Connected
 ```
 
-**Телефон / claude.ai:** кастомные коннекторы claude.ai не умеют свои HTTP-заголовки,
-но нам и не надо — секрет уже в URL. Settings → Connectors → Add custom connector →
-тот же `https://wa-mcp.example.com/<WA_MCP_SECRET>/mcp`. OAuth-поля в Advanced
+**Телефон / веб / десктоп-приложение (claude.ai connector):** добавляется **один раз
+на аккаунт** — и работает сразу на всех устройствах, где ты залогинен: приложение на
+телефоне, claude.ai в браузере, десктоп-приложение. Прямая ссылка на форму добавления:
+
+👉 **https://claude.ai/new?modal=add-custom-connector#settings/customize-connectors**
+
+(или руками: Settings → Connectors → Add custom connector). В поле URL — тот же
+`https://wa-mcp.example.com/<WA_MCP_SECRET>/mcp`. Кастомные коннекторы claude.ai не
+умеют свои HTTP-заголовки, но нам и не надо — секрет уже в URL. OAuth-поля в Advanced
 settings не заполняй. (Кастомные коннекторы есть на платных планах claude.ai —
 на бесплатном пункта может не быть.)
 

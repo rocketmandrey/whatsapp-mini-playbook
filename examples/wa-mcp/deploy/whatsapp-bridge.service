@@ -1,0 +1,15 @@
+# /etc/systemd/system/whatsapp-bridge.service — мост WhatsApp (bridge.js), обезличено.
+# Ставится ПОСЛЕ зелёного смок-теста (02_WHATSAPP_MCP.md §3 шаг 7).
+[Unit]
+Description=WhatsApp bridge (whatsapp-web.js + SQLite archive)
+After=network.target
+
+[Service]
+WorkingDirectory=/root/whatsapp-mcp
+EnvironmentFile=/root/whatsapp-mcp/.env
+ExecStart=/usr/bin/node /root/whatsapp-mcp/bridge.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -20,7 +20,7 @@
 | `mcp-server.mjs` | stdio-вход MCP — **legacy**: через SSH отваливается вместе с ssh-процессом, мы ушли на HTTP. |
 | `http-server.mjs` | HTTP-вход MCP — **основной для всех клиентов** (Claude Code + мобайл/веб), авторизация секретом-в-URL `/<WA_MCP_SECRET>/mcp`. |
 | `package.json` | Зависимости: `whatsapp-web.js`, `better-sqlite3`, `qrcode-terminal`, MCP SDK. |
-| `deploy/` | systemd-юнит MCP + nginx-шаблон (24/7 на VPS). Деплой по шагам — [`../../02_WHATSAPP_MCP.md`](../../02_WHATSAPP_MCP.md) §3. |
+| `deploy/` | Готовые systemd-юниты (мост + MCP) и nginx-шаблон (24/7 на VPS). Деплой по шагам — [`../../02_WHATSAPP_MCP.md`](../../02_WHATSAPP_MCP.md) §3. |
 
 ## Запуск
 

@@ -13,8 +13,8 @@ for (const p of ['/root/whatsapp-mcp/.env']) {
   }
 }
 
-// Default to the ALL-chats DB (groups + DMs) written by the patched bridge.
-// Override with WA_DB_PATH=/root/whatsapp/whatsapp.db for León-only.
+// Default to the ALL-chats DB (groups + DMs) written by the bridge.
+// Override with WA_DB_PATH=.../whatsapp.db to serve only the mirror group.
 const DB_PATH = process.env.WA_DB_PATH || '/root/whatsapp-mcp/all_chats.db';
 const DRAFTS_DB_PATH = process.env.WA_DRAFTS_DB_PATH || '/root/whatsapp-mcp/drafts.db';
 

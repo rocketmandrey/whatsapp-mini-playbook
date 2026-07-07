@@ -13,11 +13,11 @@ if (existsSync('.env')) {
   }
 }
 
-const TARGET_GROUP = process.env.TARGET_GROUP_NAME || 'Sala de 3️⃣ León XIII';
-const HTTP_PORT = 8795;
-// Second DB: ALL chats go here — groups AND private 1-on-1 DMs (read by the
-// MCP/connector). The León-only whatsapp.db below is UNCHANGED so the existing
-// the legacy query bot keeps working as-is.
+const TARGET_GROUP = process.env.TARGET_GROUP_NAME || '';   // optional: mirror ONE group into whatsapp.db
+const HTTP_PORT = Number(process.env.QR_PORT || 8795);
+// Main DB: ALL chats go here — groups AND private 1-on-1 DMs (read by the
+// MCP/connector). The optional whatsapp.db mirror below only fills when
+// TARGET_GROUP_NAME is set.
 const ALL_DB_PATH = process.env.ALL_DB_PATH || '/root/whatsapp-mcp/all_chats.db';
 
 // === Database Setup ===
@@ -67,7 +67,7 @@ const insertAll = allDb.prepare(`
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
-console.log('📦 Databases initialized: whatsapp.db (León) + all_chats.db (all chats: groups + DMs)');
+console.log('📦 Databases initialized: all_chats.db (all chats: groups + DMs) + whatsapp.db (optional mirror)');
 
 // === State ===
 let currentQR = null;
@@ -85,7 +85,7 @@ const httpServer = createServer((req, res) => {
       res.end(`
         <html><body style="background:#111;color:#0f0;font-family:monospace;text-align:center;padding:40px">
           <h1>✅ WhatsApp Connected!</h1>
-          <p>León messages: ${messageCount}</p>
+          <p>Mirror-group messages: ${messageCount}</p>
           <p>All-groups messages: ${allCount}</p>
           <script>setTimeout(()=>location.reload(), 5000)</script>
         </body></html>
@@ -168,22 +168,24 @@ client.on('ready', async () => {
   currentQR = null;
   console.log('✅ WhatsApp client ready!');
 
-  // Find target group (León) for the legacy whatsapp.db
-  const chats = await client.getChats();
-  for (const chat of chats) {
-    if (chat.isGroup) {
-      console.log(`  📋 Group: "${chat.name}" (${chat.id._serialized})`);
-      if (chat.name && chat.name.includes('Sala de') && chat.name.includes('León')) {
-        targetGroupId = chat.id._serialized;
-        console.log(`\n🎯 León group found: "${chat.name}" → ${targetGroupId}\n`);
-        break;
+  // Find the optional mirror group (TARGET_GROUP_NAME) for whatsapp.db
+  if (TARGET_GROUP) {
+    const chats = await client.getChats();
+    for (const chat of chats) {
+      if (chat.isGroup) {
+        console.log(`  📋 Group: "${chat.name}" (${chat.id._serialized})`);
+        if (chat.name && chat.name.includes(TARGET_GROUP)) {
+          targetGroupId = chat.id._serialized;
+          console.log(`\n🎯 Mirror group found: "${chat.name}" → ${targetGroupId}\n`);
+          break;
+        }
       }
     }
-  }
 
-  if (!targetGroupId) {
-    console.log(`\n⚠️ León group "${TARGET_GROUP}" not found.`);
-    console.log('Will match dynamically when messages arrive.\n');
+    if (!targetGroupId) {
+      console.log(`\n⚠️ Mirror group "${TARGET_GROUP}" not found.`);
+      console.log('Will match dynamically when messages arrive.\n');
+    }
   }
 });
 
@@ -219,13 +221,13 @@ client.on('message_create', async (msg) => {
     const allInfo = insertAll.run(...row);
     if (allInfo.changes > 0) allCount++;
 
-    // 2) León is a group: dynamic match (unchanged behaviour)
-    if (chat.isGroup && !targetGroupId && chat.name && chat.name.includes('Sala de') && chat.name.includes('León')) {
+    // 2) optional mirror group: dynamic match by TARGET_GROUP_NAME substring
+    if (chat.isGroup && TARGET_GROUP && !targetGroupId && chat.name && chat.name.includes(TARGET_GROUP)) {
       targetGroupId = chatId;
-      console.log(`🎯 León group matched: "${chat.name}" → ${targetGroupId}`);
+      console.log(`🎯 Mirror group matched: "${chat.name}" → ${targetGroupId}`);
     }
 
-    // 3) León -> whatsapp.db (UNCHANGED: only the target group, as before)
+    // 3) mirror group -> whatsapp.db (only that one group)
     if (targetGroupId && chatId === targetGroupId) {
       const info = insertMsg.run(...row);
       if (info.changes > 0) {
@@ -350,6 +352,8 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 console.log(`🚀 WhatsApp Bridge starting...`);
-console.log(`🎯 León group: "${TARGET_GROUP}" → whatsapp.db | all groups → all_chats.db`);
+console.log(TARGET_GROUP
+  ? `🎯 Mirror group: "${TARGET_GROUP}" → whatsapp.db | all chats → all_chats.db`
+  : `🎯 All chats → all_chats.db (no mirror group set)`);
 console.log('⏳ Initializing Chromium (30-60 seconds)...\n');
 client.initialize();
